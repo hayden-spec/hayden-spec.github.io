@@ -7,21 +7,102 @@
         <generator>Hugo -- gohugo.io</generator>
         <language>zh-cn</language>
         <copyright>Example Person</copyright>
-        <lastBuildDate>Thu, 07 Aug 2025 01:55:07 +0800</lastBuildDate><atom:link href="https://hayden-spec.github.io/index.xml" rel="self" type="application/rss+xml" /><item>
-        <title>Newnewnew</title>
-        <link>https://hayden-spec.github.io/p/newnewnew/</link>
-        <pubDate>Thu, 07 Aug 2025 01:55:07 +0800</pubDate>
+        <lastBuildDate>Sun, 10 Aug 2025 01:18:23 +0800</lastBuildDate><atom:link href="https://hayden-spec.github.io/index.xml" rel="self" type="application/rss+xml" /><item>
+        <title>Java八股</title>
+        <link>https://hayden-spec.github.io/p/java%E5%85%AB%E8%82%A1/</link>
+        <pubDate>Sun, 10 Aug 2025 01:18:23 +0800</pubDate>
         
-        <guid>https://hayden-spec.github.io/p/newnewnew/</guid>
-        <description></description>
-        </item>
-        <item>
-        <title>MyfirstBlog</title>
-        <link>https://hayden-spec.github.io/p/myfirstblog/</link>
-        <pubDate>Thu, 07 Aug 2025 01:22:12 +0800</pubDate>
-        
-        <guid>https://hayden-spec.github.io/p/myfirstblog/</guid>
-        <description></description>
+        <guid>https://hayden-spec.github.io/p/java%E5%85%AB%E8%82%A1/</guid>
+        <description>&lt;h1 id=&#34;java八股文面试题&#34;&gt;Java八股文面试题
+&lt;/h1&gt;&lt;h2 id=&#34;一redis篇&#34;&gt;一、redis篇
+&lt;/h2&gt;&lt;h3 id=&#34;1redis使用场景-缓存-缓存穿透&#34;&gt;1.redis使用场景-缓存-缓存穿透
+&lt;/h3&gt;&lt;p&gt;&lt;strong&gt;缓存击穿&lt;/strong&gt;：查询一个不存在的数据，mysql查询不到数据也不会直接写入缓存，就会导致每次请求都查数据库&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;解决方案一&lt;/strong&gt;：缓存空数据，查询返回数据的数据为空，但仍然把这个空结果进行缓存&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;优点&lt;/strong&gt;：简单&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;缺点&lt;/strong&gt;：消耗内存，可能发生数据不一致的问题&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;解决方案二&lt;/strong&gt;：布隆过滤器&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;优点&lt;/strong&gt;：内存占有较少，没有多余key&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;缺点&lt;/strong&gt;：实现复杂，存在误判&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;https://hayden-spec.github.io/p/java%E5%85%AB%E8%82%A1/qq.jpg&#34;
+	width=&#34;1712&#34;
+	height=&#34;347&#34;
+	srcset=&#34;https://hayden-spec.github.io/p/java%E5%85%AB%E8%82%A1/qq_hu_497d871e2df7df9e.jpg 480w, https://hayden-spec.github.io/p/java%E5%85%AB%E8%82%A1/qq_hu_87014efb77be13ba.jpg 1024w&#34;
+	loading=&#34;lazy&#34;
+	
+		alt=&#34;布鲁过滤器&#34;
+	
+	
+		class=&#34;gallery-image&#34; 
+		data-flex-grow=&#34;493&#34;
+		data-flex-basis=&#34;1184px&#34;
+	
+&gt;&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;布隆过滤器&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;bitmap(位图)&lt;/strong&gt;：相当于是一个以（bit）位为单位的数组，数组中每个单位智能粗出二进制数0或1&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;布隆过滤器作用&lt;/strong&gt;：布隆过滤器可以用于检索一个元素是否存在一个集合中&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;https://hayden-spec.github.io/p/java%E5%85%AB%E8%82%A1/ww.jpg&#34;
+	width=&#34;1377&#34;
+	height=&#34;386&#34;
+	srcset=&#34;https://hayden-spec.github.io/p/java%E5%85%AB%E8%82%A1/ww_hu_b4a7aa7da59a0155.jpg 480w, https://hayden-spec.github.io/p/java%E5%85%AB%E8%82%A1/ww_hu_70dc7d569a061c57.jpg 1024w&#34;
+	loading=&#34;lazy&#34;
+	
+		alt=&#34;1&#34;
+	
+	
+		class=&#34;gallery-image&#34; 
+		data-flex-grow=&#34;356&#34;
+		data-flex-basis=&#34;856px&#34;
+	
+&gt;&lt;/p&gt;
+&lt;p&gt;存储数据：id为1 的数据，通过多个hash函数获取hash值，根据hash计算数组对应位置改为1&lt;/p&gt;
+&lt;p&gt;查询数据：使用相同hash函数获取hash值，判断对应位置是否都为1&lt;/p&gt;
+&lt;h3 id=&#34;2缓存击穿&#34;&gt;2.缓存击穿
+&lt;/h3&gt;&lt;p&gt;&lt;strong&gt;缓存击穿&lt;/strong&gt;：给某个key设置了过期时间，当key过期的时候，恰好这个时间点对这个key有大量的并发请求过来，这些并发请求可能瞬间把DB压垮&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;https://hayden-spec.github.io/p/java%E5%85%AB%E8%82%A1/%E7%BC%93%E5%AD%98%E5%87%BB%E7%A9%BF%E7%A4%BA%E6%84%8F%E5%9B%BE.jpg&#34;
+	width=&#34;1510&#34;
+	height=&#34;300&#34;
+	srcset=&#34;https://hayden-spec.github.io/p/java%E5%85%AB%E8%82%A1/%E7%BC%93%E5%AD%98%E5%87%BB%E7%A9%BF%E7%A4%BA%E6%84%8F%E5%9B%BE_hu_bb44edd0b0d0358d.jpg 480w, https://hayden-spec.github.io/p/java%E5%85%AB%E8%82%A1/%E7%BC%93%E5%AD%98%E5%87%BB%E7%A9%BF%E7%A4%BA%E6%84%8F%E5%9B%BE_hu_2d9b49a255183682.jpg 1024w&#34;
+	loading=&#34;lazy&#34;
+	
+		alt=&#34;缓存击穿示意图&#34;
+	
+	
+		class=&#34;gallery-image&#34; 
+		data-flex-grow=&#34;503&#34;
+		data-flex-basis=&#34;1208px&#34;
+	
+&gt;&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;解决方案一&lt;/strong&gt;：互斥锁：强一致，性能差&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;https://hayden-spec.github.io/p/java%E5%85%AB%E8%82%A1/%E4%BA%92%E6%96%A5%E9%94%81.jpg&#34;
+	width=&#34;635&#34;
+	height=&#34;817&#34;
+	srcset=&#34;https://hayden-spec.github.io/p/java%E5%85%AB%E8%82%A1/%E4%BA%92%E6%96%A5%E9%94%81_hu_7280f4b16df5475f.jpg 480w, https://hayden-spec.github.io/p/java%E5%85%AB%E8%82%A1/%E4%BA%92%E6%96%A5%E9%94%81_hu_555329ee5bdc3777.jpg 1024w&#34;
+	loading=&#34;lazy&#34;
+	
+		alt=&#34;互斥锁&#34;
+	
+	
+		class=&#34;gallery-image&#34; 
+		data-flex-grow=&#34;77&#34;
+		data-flex-basis=&#34;186px&#34;
+	
+&gt;&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;方案二&lt;/strong&gt;：逻辑过期：高可用，性能优，但不能保证数据绝对一致性&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;https://hayden-spec.github.io/p/java%E5%85%AB%E8%82%A1/%E9%80%BB%E8%BE%91%E8%BF%87%E6%9C%9F.jpg&#34;
+	width=&#34;1063&#34;
+	height=&#34;766&#34;
+	srcset=&#34;https://hayden-spec.github.io/p/java%E5%85%AB%E8%82%A1/%E9%80%BB%E8%BE%91%E8%BF%87%E6%9C%9F_hu_a2dfc835ac241de6.jpg 480w, https://hayden-spec.github.io/p/java%E5%85%AB%E8%82%A1/%E9%80%BB%E8%BE%91%E8%BF%87%E6%9C%9F_hu_24994b55370bdcca.jpg 1024w&#34;
+	loading=&#34;lazy&#34;
+	
+		alt=&#34;逻辑过期&#34;
+	
+	
+		class=&#34;gallery-image&#34; 
+		data-flex-grow=&#34;138&#34;
+		data-flex-basis=&#34;333px&#34;
+	
+&gt;&lt;/p&gt;
+</description>
         </item>
         <item>
         <title>Chinese Test</title>
