@@ -294,6 +294,7 @@
       <ol>
         <li><a href="#1redis使用场景-缓存-缓存穿透">1.redis使用场景-缓存-缓存穿透</a></li>
         <li><a href="#2缓存击穿">2.缓存击穿</a></li>
+        <li><a href="#3-问redis作为缓存mysql数据如何与redis数据同步呢双写一致性问题">3. 问：redis作为缓存，mysql数据如何与redis数据同步呢（双写一致性问题）</a></li>
       </ol>
     </li>
   </ol>
@@ -440,6 +441,44 @@
 		class="gallery-image" 
 		data-flex-grow="138"
 		data-flex-basis="333px"
+	
+></p>
+<h3 id="3-问redis作为缓存mysql数据如何与redis数据同步呢双写一致性问题">3. 问：redis作为缓存，mysql数据如何与redis数据同步呢（双写一致性问题）
+</h3><p>答：一定需结合自己的业务背景（一致性要求高、允许延迟一致）</p>
+<p><strong>双写一致性</strong>：当修改了数据库的数据也要同步更新缓存中的数据，缓存和数据库的数据要保持一致</p>
+<p>​						1读操作：缓存命中，直接返回；缓存未命中查询数据库，写入缓存，设定超时时间</p>
+<p>​						2.写操作：延迟双删 ：先删缓存还是先删数据库？ 为什么要删除两次缓存？ 为什么要延迟删除？</p>
+<p><strong>确保数据的强一致性</strong>：读多写少：共享锁：读锁readLock，加锁之后，其他线程可以共享读操作</p>
+<p>​														  排他锁：独占锁writeLock，加锁后，阻塞其他线程读写操作</p>
+<p>性能较低</p>
+<p><strong>异步通知保证数据的最终一致性</strong>：</p>
+<p>基于mq</p>
+<p><img src="/p/java%E5%85%AB%E8%82%A1/mq%E5%BC%82%E6%AD%A5%E9%80%9A%E4%BF%A1.jpg"
+	width="1452"
+	height="698"
+	srcset="/p/java%E5%85%AB%E8%82%A1/mq%E5%BC%82%E6%AD%A5%E9%80%9A%E4%BF%A1_hu_d5e6a3f0b3dbfc2b.jpg 480w, /p/java%E5%85%AB%E8%82%A1/mq%E5%BC%82%E6%AD%A5%E9%80%9A%E4%BF%A1_hu_2c9170f497cbe66b.jpg 1024w"
+	loading="lazy"
+	
+		alt="mq异步通信"
+	
+	
+		class="gallery-image" 
+		data-flex-grow="208"
+		data-flex-basis="499px"
+	
+></p>
+<p>基于canal的异步通知：<img src="/p/java%E5%85%AB%E8%82%A1/canal%E7%9A%84%E5%BC%82%E6%AD%A5%E9%80%9A%E7%9F%A5.jpg"
+	width="1721"
+	height="662"
+	srcset="/p/java%E5%85%AB%E8%82%A1/canal%E7%9A%84%E5%BC%82%E6%AD%A5%E9%80%9A%E7%9F%A5_hu_cdf972ddddc5cc65.jpg 480w, /p/java%E5%85%AB%E8%82%A1/canal%E7%9A%84%E5%BC%82%E6%AD%A5%E9%80%9A%E7%9F%A5_hu_c1f4ab19b858003c.jpg 1024w"
+	loading="lazy"
+	
+		alt="canal的异步通知"
+	
+	
+		class="gallery-image" 
+		data-flex-grow="259"
+		data-flex-basis="623px"
 	
 ></p>
 

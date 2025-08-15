@@ -102,6 +102,44 @@
 		data-flex-basis=&#34;333px&#34;
 	
 &gt;&lt;/p&gt;
+&lt;h3 id=&#34;3-问redis作为缓存mysql数据如何与redis数据同步呢双写一致性问题&#34;&gt;3. 问：redis作为缓存，mysql数据如何与redis数据同步呢（双写一致性问题）
+&lt;/h3&gt;&lt;p&gt;答：一定需结合自己的业务背景（一致性要求高、允许延迟一致）&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;双写一致性&lt;/strong&gt;：当修改了数据库的数据也要同步更新缓存中的数据，缓存和数据库的数据要保持一致&lt;/p&gt;
+&lt;p&gt;​						1读操作：缓存命中，直接返回；缓存未命中查询数据库，写入缓存，设定超时时间&lt;/p&gt;
+&lt;p&gt;​						2.写操作：延迟双删 ：先删缓存还是先删数据库？ 为什么要删除两次缓存？ 为什么要延迟删除？&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;确保数据的强一致性&lt;/strong&gt;：读多写少：共享锁：读锁readLock，加锁之后，其他线程可以共享读操作&lt;/p&gt;
+&lt;p&gt;​														  排他锁：独占锁writeLock，加锁后，阻塞其他线程读写操作&lt;/p&gt;
+&lt;p&gt;性能较低&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;异步通知保证数据的最终一致性&lt;/strong&gt;：&lt;/p&gt;
+&lt;p&gt;基于mq&lt;/p&gt;
+&lt;p&gt;&lt;img src=&#34;https://hayden-spec.github.io/p/java%E5%85%AB%E8%82%A1/mq%E5%BC%82%E6%AD%A5%E9%80%9A%E4%BF%A1.jpg&#34;
+	width=&#34;1452&#34;
+	height=&#34;698&#34;
+	srcset=&#34;https://hayden-spec.github.io/p/java%E5%85%AB%E8%82%A1/mq%E5%BC%82%E6%AD%A5%E9%80%9A%E4%BF%A1_hu_d5e6a3f0b3dbfc2b.jpg 480w, https://hayden-spec.github.io/p/java%E5%85%AB%E8%82%A1/mq%E5%BC%82%E6%AD%A5%E9%80%9A%E4%BF%A1_hu_2c9170f497cbe66b.jpg 1024w&#34;
+	loading=&#34;lazy&#34;
+	
+		alt=&#34;mq异步通信&#34;
+	
+	
+		class=&#34;gallery-image&#34; 
+		data-flex-grow=&#34;208&#34;
+		data-flex-basis=&#34;499px&#34;
+	
+&gt;&lt;/p&gt;
+&lt;p&gt;基于canal的异步通知：&lt;img src=&#34;https://hayden-spec.github.io/p/java%E5%85%AB%E8%82%A1/canal%E7%9A%84%E5%BC%82%E6%AD%A5%E9%80%9A%E7%9F%A5.jpg&#34;
+	width=&#34;1721&#34;
+	height=&#34;662&#34;
+	srcset=&#34;https://hayden-spec.github.io/p/java%E5%85%AB%E8%82%A1/canal%E7%9A%84%E5%BC%82%E6%AD%A5%E9%80%9A%E7%9F%A5_hu_cdf972ddddc5cc65.jpg 480w, https://hayden-spec.github.io/p/java%E5%85%AB%E8%82%A1/canal%E7%9A%84%E5%BC%82%E6%AD%A5%E9%80%9A%E7%9F%A5_hu_c1f4ab19b858003c.jpg 1024w&#34;
+	loading=&#34;lazy&#34;
+	
+		alt=&#34;canal的异步通知&#34;
+	
+	
+		class=&#34;gallery-image&#34; 
+		data-flex-grow=&#34;259&#34;
+		data-flex-basis=&#34;623px&#34;
+	
+&gt;&lt;/p&gt;
 </description>
         </item>
         <item>
