@@ -295,6 +295,34 @@
         <li><a href="#1redis使用场景-缓存-缓存穿透">1.redis使用场景-缓存-缓存穿透</a></li>
         <li><a href="#2缓存击穿">2.缓存击穿</a></li>
         <li><a href="#3-问redis作为缓存mysql数据如何与redis数据同步呢双写一致性问题">3. 问：redis作为缓存，mysql数据如何与redis数据同步呢（双写一致性问题）</a></li>
+        <li><a href="#4问redis作为缓存数据持久化是怎么做的">4.问redis作为缓存，数据持久化是怎么做的？</a></li>
+        <li><a href="#5假如redis的key过期后会立即删除么">5.假如redis的key过期后会立即删除么？</a></li>
+        <li><a href="#6如果缓存过多内存是有限的内存被占满了怎么办">6.如果缓存过多，内存是有限的，内存被占满了怎么办？</a>
+          <ol>
+            <li><a href="#关于数据淘汰策略其他面试题目">关于数据淘汰策略其他面试题目</a></li>
+          </ol>
+        </li>
+        <li><a href="#7redis集群有哪些方案">7.redis集群有哪些方案？</a>
+          <ol>
+            <li><a href="#主从复制">主从复制：</a></li>
+          </ol>
+        </li>
+        <li><a href="#8redis可重入锁原理">8.redis可重入锁原理</a></li>
+        <li><a href="#9redis哨兵模式和集群脑裂">9.redis哨兵模式和集群脑裂</a></li>
+        <li><a href="#10分片集群数据读写规则">10.分片集群，数据读写规则</a></li>
+        <li><a href="#11redis是单线程的但是为什么还那么快">11.Redis是单线程的，但是为什么还那么快</a></li>
+      </ol>
+    </li>
+    <li><a href="#二常见集合篇">二、常见集合篇</a>
+      <ol>
+        <li><a href="#1arrlist-数据结构-数组">1.ArrList-数据结构-数组：</a></li>
+        <li><a href="#2arraylist底层的实现原理是什么">2.ArrayList底层的实现原理是什么？</a></li>
+        <li><a href="#3如何实现数组和list之间的转换">3.如何实现数组和List之间的转换</a></li>
+        <li><a href="#4arraylist和linkedlist的区别是什么">4.ArrayList和LinkedList的区别是什么？</a></li>
+        <li><a href="#5数据结构-散列表">5.数据结构-散列表</a></li>
+        <li><a href="#6hashmap实现原理">6.HashMap实现原理</a></li>
+        <li><a href="#7hashmap中put方法的具体实现">7.HashMap中put方法的具体实现</a></li>
+        <li><a href="#8hashmap中的扩容机制">8.HashMap中的扩容机制：</a></li>
       </ol>
     </li>
   </ol>
@@ -481,6 +509,431 @@
 		data-flex-basis="623px"
 	
 ></p>
+<h3 id="4问redis作为缓存数据持久化是怎么做的">4.问redis作为缓存，数据持久化是怎么做的？
+</h3><p>​		<strong>redis中提供了两种数据持久化的方式：1、RDB  2、AOF</strong></p>
+<p>4.1	<strong>RDB</strong>全称Redis Database Backup file （redis）数据备份文件，也叫做redis数据快照，简单来说就是把内存中的所有数据都记录到磁盘中。当redis实例故障重启后，从磁盘读取快照文件，恢复数据。</p>
+<p>4.1.1 主动备份：</p>
+<p><img src="/p/java%E5%85%AB%E8%82%A1/RDB%E4%B8%BB%E5%8A%A8%E5%A4%87%E4%BB%BD.jpg"
+	width="1352"
+	height="298"
+	srcset="/p/java%E5%85%AB%E8%82%A1/RDB%E4%B8%BB%E5%8A%A8%E5%A4%87%E4%BB%BD_hu_6fc91cafe1dcff5c.jpg 480w, /p/java%E5%85%AB%E8%82%A1/RDB%E4%B8%BB%E5%8A%A8%E5%A4%87%E4%BB%BD_hu_e06186778e89cd85.jpg 1024w"
+	loading="lazy"
+	
+		alt="RDB主动备份"
+	
+	
+		class="gallery-image" 
+		data-flex-grow="453"
+		data-flex-basis="1088px"
+	
+></p>
+<p>​	redis内部有触发rdb的机制，可在redis.config文件下找到，格式如下：</p>
+<p><img src="/p/java%E5%85%AB%E8%82%A1/RDB%E8%A7%A6%E5%8F%91%E6%9C%BA%E5%88%B6.jpg"
+	width="843"
+	height="168"
+	srcset="/p/java%E5%85%AB%E8%82%A1/RDB%E8%A7%A6%E5%8F%91%E6%9C%BA%E5%88%B6_hu_756d19174f7c7dc6.jpg 480w, /p/java%E5%85%AB%E8%82%A1/RDB%E8%A7%A6%E5%8F%91%E6%9C%BA%E5%88%B6_hu_c40a48cde2e475e9.jpg 1024w"
+	loading="lazy"
+	
+		alt="RDB触发机制"
+	
+	
+		class="gallery-image" 
+		data-flex-grow="501"
+		data-flex-basis="1204px"
+	
+></p>
+<p><strong>RDB的执行原理</strong></p>
+<p>bgsave开始时会fork主进程得到子进程，子进程共享主进程的内存数据。完成fork后读取内存数据并写入RDB文件。</p>
+<p>fork采用的时copy-on-write技术：1.当主进程执行读操作时，访问共享内存； 2.当主进程执行写操作时，则会拷贝一份数据，执行写操作</p>
+<p>4.2 <strong>AOF</strong>：全称Aooend Only File（追加文件）。redis处理每一个写命令都会记录在AOF文件，可以看作时命令日志文件。</p>
+<p>AOF默认关闭，需要修改redis.conf配置文件来开启AOF：</p>
+<p><img src="/p/java%E5%85%AB%E8%82%A1/AOF%E5%BC%80%E5%90%AF.jpg"
+	width="1502"
+	height="144"
+	srcset="/p/java%E5%85%AB%E8%82%A1/AOF%E5%BC%80%E5%90%AF_hu_42f0b477988b9da9.jpg 480w, /p/java%E5%85%AB%E8%82%A1/AOF%E5%BC%80%E5%90%AF_hu_1c9fb349e01984dd.jpg 1024w"
+	loading="lazy"
+	
+		alt="AOF开启"
+	
+	
+		class="gallery-image" 
+		data-flex-grow="1043"
+		data-flex-basis="2503px"
+	
+></p>
+<p>AOF的命令记录的频率也可以通过redis.conf配置</p>
+<p><img src="/p/java%E5%85%AB%E8%82%A1/AOF%E8%AE%B0%E5%BD%95%E9%A2%91%E7%8E%87.jpg"
+	width="1506"
+	height="215"
+	srcset="/p/java%E5%85%AB%E8%82%A1/AOF%E8%AE%B0%E5%BD%95%E9%A2%91%E7%8E%87_hu_844e00e2edf35edb.jpg 480w, /p/java%E5%85%AB%E8%82%A1/AOF%E8%AE%B0%E5%BD%95%E9%A2%91%E7%8E%87_hu_eac16bf88bfc036e.jpg 1024w"
+	loading="lazy"
+	
+		alt="AOF记录频率"
+	
+	
+		class="gallery-image" 
+		data-flex-grow="700"
+		data-flex-basis="1681px"
+	
+></p>
+<p><img src="/p/java%E5%85%AB%E8%82%A1/AOF%E9%85%8D%E7%BD%AE%E9%A1%B9%E5%AF%B9%E6%AF%94.jpg"
+	width="1403"
+	height="230"
+	srcset="/p/java%E5%85%AB%E8%82%A1/AOF%E9%85%8D%E7%BD%AE%E9%A1%B9%E5%AF%B9%E6%AF%94_hu_85667e5b88d0a56c.jpg 480w, /p/java%E5%85%AB%E8%82%A1/AOF%E9%85%8D%E7%BD%AE%E9%A1%B9%E5%AF%B9%E6%AF%94_hu_fa7b5db4b03067bb.jpg 1024w"
+	loading="lazy"
+	
+		alt="AOF配置项对比"
+	
+	
+		class="gallery-image" 
+		data-flex-grow="610"
+		data-flex-basis="1464px"
+	
+></p>
+<p>因为是记录命令AOF文件会比RDB文件大得多。而且AOF会记录对同一个key的多次写操作，但只有最后一次写操作才有意义。用过执行bgrewriteof命令，可以让AOF文件执行重写功能，用最少的命令达到相同的效果</p>
+<p><img src="/p/java%E5%85%AB%E8%82%A1/AOF%E9%87%8D%E5%86%99%E5%91%BD%E4%BB%A4.jpg"
+	width="1513"
+	height="147"
+	srcset="/p/java%E5%85%AB%E8%82%A1/AOF%E9%87%8D%E5%86%99%E5%91%BD%E4%BB%A4_hu_ddd2b88d0a17c7d1.jpg 480w, /p/java%E5%85%AB%E8%82%A1/AOF%E9%87%8D%E5%86%99%E5%91%BD%E4%BB%A4_hu_99b4d360b3b0cbfc.jpg 1024w"
+	loading="lazy"
+	
+		alt="AOF重写命令"
+	
+	
+		class="gallery-image" 
+		data-flex-grow="1029"
+		data-flex-basis="2470px"
+	
+></p>
+<p>RDB与AOF对比：</p>
+<div class="table-wrapper"><table>
+  <thead>
+      <tr>
+          <th style="text-align: center"></th>
+          <th style="text-align: center">RDB</th>
+          <th style="text-align: center">AOF</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td style="text-align: center">持久化方式</td>
+          <td style="text-align: center">定时对整个内存做快照</td>
+          <td style="text-align: center">记录每一次执行的命令</td>
+      </tr>
+      <tr>
+          <td style="text-align: center">数据完整性</td>
+          <td style="text-align: center">不完整，两次备份之间会丢失</td>
+          <td style="text-align: center">相对完整，取决于刷盘策略</td>
+      </tr>
+      <tr>
+          <td style="text-align: center">文件大小</td>
+          <td style="text-align: center">会有压缩，文件体积小</td>
+          <td style="text-align: center">记录命令，文件体积很大</td>
+      </tr>
+      <tr>
+          <td style="text-align: center">宕机恢复速度</td>
+          <td style="text-align: center">很快</td>
+          <td style="text-align: center">慢</td>
+      </tr>
+      <tr>
+          <td style="text-align: center">数据恢复优先级</td>
+          <td style="text-align: center">低，因为数据完整性不如AOF</td>
+          <td style="text-align: center">高，因为数据完整性更高</td>
+      </tr>
+      <tr>
+          <td style="text-align: center">系统资源占用</td>
+          <td style="text-align: center">高，大量CPU和内存消耗</td>
+          <td style="text-align: center">低，主要是磁盘Io资源，但AOF重写时会占用大量CPU和内存资源</td>
+      </tr>
+      <tr>
+          <td style="text-align: center">使用场景</td>
+          <td style="text-align: center">可以容忍数分钟的数据丢失，追求更快的启动速度</td>
+          <td style="text-align: center">对数据安全性要求较高常见</td>
+      </tr>
+  </tbody>
+</table></div>
+<h3 id="5假如redis的key过期后会立即删除么">5.假如redis的key过期后会立即删除么？
+</h3><p>Redis对数据设置数据的有效时间，数据过期以后，就需要将数据从内存中删除掉。可以按照不同的规则进行删除，这种删除规则就被称之为<strong>数据的删除策略</strong>（数据过期策略）</p>
+<p>redis数据删除策略：</p>
+<p><strong>惰性删除</strong>：设置该key过期时间后，我们不去管他，当需要该key时，我们在检查其是否过期，如果过期，我们删除掉它，反之返回该key</p>
+<p><strong>优点</strong>：对cpu友好，只会在使用该key时才会进行过期检查，对于很多用不到的key不用浪费时间进行过期检查</p>
+<p><strong>缺点</strong>：对内存不友好，如果一个key已经过期，但是一直没有使用，那么该key就会一直存在内存中，内存永远不会释放</p>
+<p><strong>定期删除</strong>：每隔一段时间，我们就对一些key进行检查，删除里面过期的key（从一定数量的数据库中去除一定数量的随机key进行检查。并删除其中过期的key）。</p>
+<p>定期删除有两种模式：
+1.SLOW模式是定时任务，执行频率默认10hz，每次不超过25ms，通过修改配置文件redis.conf的hz选项来调整次数</p>
+<p>2.FAST模式执行频率不固定，但每次间隔 不低于2ms，每次耗时不超过1ms</p>
+<p><strong>优点</strong>：可以通过限制删除操作执行的时长和频率来减少删除操作对cpu的影响，另外定期删除也能有效释放过期键占用的内存</p>
+<p><strong>缺点</strong>：难以确定删除操作执行的时长和频率。</p>
+<p><strong>Redis的过期删除策略：惰性删除+定期删除两种策略进行配合使用</strong></p>
+<h3 id="6如果缓存过多内存是有限的内存被占满了怎么办">6.如果缓存过多，内存是有限的，内存被占满了怎么办？
+</h3><pre><code>其实就是想问redis的数据淘汰策略是什么？
+</code></pre>
+<p><strong>数据淘汰策略</strong>：当redis中的内存不够用时，此时在向redis中添加新的key，那么redis就会按照莫一种规则将内存中的数据删除掉，这种数据的删除规则被称之为内存的淘汰策略。</p>
+<p><strong>redis支持八种不同策略来选择要删除的key</strong>：</p>
+<p><img src="/p/java%E5%85%AB%E8%82%A1/redis%E5%85%AB%E7%A7%8D%E7%AD%96%E7%95%A5%E5%88%A0%E9%99%A4key.jpg"
+	width="1803"
+	height="563"
+	srcset="/p/java%E5%85%AB%E8%82%A1/redis%E5%85%AB%E7%A7%8D%E7%AD%96%E7%95%A5%E5%88%A0%E9%99%A4key_hu_afdc1fff6c0446bf.jpg 480w, /p/java%E5%85%AB%E8%82%A1/redis%E5%85%AB%E7%A7%8D%E7%AD%96%E7%95%A5%E5%88%A0%E9%99%A4key_hu_423f236fbdf54fa5.jpg 1024w"
+	loading="lazy"
+	
+		alt="redis八种策略删除key"
+	
+	
+		class="gallery-image" 
+		data-flex-grow="320"
+		data-flex-basis="768px"
+	
+></p>
+<h4 id="关于数据淘汰策略其他面试题目">关于数据淘汰策略其他面试题目
+</h4><p>1.数据库中有1000万数据，redis中智能缓存20w数据，如何保证reids中的数据都是热点数据？</p>
+<p>使用allkeys-lru（挑选最近最少使用的数据淘汰策略）淘汰策略，留下的都是经常访问的热点数据</p>
+<p>2.redis的内存用完了会发生什么</p>
+<p>主要看数据淘汰策略是什么？如果时默认配置，会直接报错</p>
+<h3 id="7redis集群有哪些方案">7.redis集群有哪些方案？
+</h3><p>三种：主从复制、哨兵模式、分片集群</p>
+<h4 id="主从复制">主从复制：
+</h4><p>单节点redis的并发能力是有上线的，要进一步提高redis并发能力，就需要搭建主从集群，实现读写分离</p>
+<p>主从同步原理：</p>
+<p>主从全量同步：</p>
+<p><img src="/p/java%E5%85%AB%E8%82%A1/%E4%B8%BB%E4%BB%8E%E5%85%A8%E9%87%8F%E5%90%8C%E6%AD%A5.jpg"
+	width="1569"
+	height="882"
+	srcset="/p/java%E5%85%AB%E8%82%A1/%E4%B8%BB%E4%BB%8E%E5%85%A8%E9%87%8F%E5%90%8C%E6%AD%A5_hu_f42647c5d538f366.jpg 480w, /p/java%E5%85%AB%E8%82%A1/%E4%B8%BB%E4%BB%8E%E5%85%A8%E9%87%8F%E5%90%8C%E6%AD%A5_hu_85cd809b10c8353e.jpg 1024w"
+	loading="lazy"
+	
+		alt="主从全量同步"
+	
+	
+		class="gallery-image" 
+		data-flex-grow="177"
+		data-flex-basis="426px"
+	
+></p>
+<p>主从增量同步：（slave重启或者后期数据变化）</p>
+<p><img src="/p/java%E5%85%AB%E8%82%A1/%E4%B8%BB%E4%BB%8E%E5%A2%9E%E9%87%8F%E5%90%8C%E6%AD%A5.jpg"
+	width="1125"
+	height="576"
+	srcset="/p/java%E5%85%AB%E8%82%A1/%E4%B8%BB%E4%BB%8E%E5%A2%9E%E9%87%8F%E5%90%8C%E6%AD%A5_hu_9493390d1a0b9e31.jpg 480w, /p/java%E5%85%AB%E8%82%A1/%E4%B8%BB%E4%BB%8E%E5%A2%9E%E9%87%8F%E5%90%8C%E6%AD%A5_hu_d088cf357e18938d.jpg 1024w"
+	loading="lazy"
+	
+		alt="主从增量同步"
+	
+	
+		class="gallery-image" 
+		data-flex-grow="195"
+		data-flex-basis="468px"
+	
+></p>
+<p><strong>问介绍一下redis的主从同步</strong>：</p>
+<p>单节点redis的并发能力是有上限的，要进一步提高rerdis的并发能力，就需要搭配主从集群，实现读写分离一般都是一主多从，主节点负责写数据，从节点负责读数据</p>
+<p><strong>主从同步流程</strong>：
+全量同步</p>
+<p>1.从节点请求主节点同步数据（replication id、offset）</p>
+<p>2.主节点判断是否是第一次请求，是第一次就与从节点同步版本信息（replication id和offset）</p>
+<p>3。主节点执行bgsave生成rdb文件后，发送给从节点去执行</p>
+<p>4.在rdb生成期间，主节点会以命令的方式记录到缓存区（一个日志文件）</p>
+<p>5.把生成后的命令日志文件发送给节点进行同步</p>
+<p><strong>增量同步</strong>：</p>
+<p>1.从节点请求主节点同步数据，主节点判断不是第一次请求，不是第一次就获取节点的offset值</p>
+<p>2.主节点命令日志中获取offset值之后的数据，发送给节点进行数据同步</p>
+<h3 id="8redis可重入锁原理">8.redis可重入锁原理
+</h3><p>流程图：</p>
+<p><img src="/p/java%E5%85%AB%E8%82%A1/redis%E5%8F%AF%E9%87%8D%E5%85%A5%E9%94%81%E5%8E%9F%E7%90%86.jpg"
+	width="649"
+	height="709"
+	srcset="/p/java%E5%85%AB%E8%82%A1/redis%E5%8F%AF%E9%87%8D%E5%85%A5%E9%94%81%E5%8E%9F%E7%90%86_hu_a1ab161a50bfcc82.jpg 480w, /p/java%E5%85%AB%E8%82%A1/redis%E5%8F%AF%E9%87%8D%E5%85%A5%E9%94%81%E5%8E%9F%E7%90%86_hu_c548760f255c3746.jpg 1024w"
+	loading="lazy"
+	
+		alt="redis可重入锁原理"
+	
+	
+		class="gallery-image" 
+		data-flex-grow="91"
+		data-flex-basis="219px"
+	
+></p>
+<p>获取锁的lua脚本：</p>
+<p><img src="/p/java%E5%85%AB%E8%82%A1/%E8%8E%B7%E5%8F%96%E9%94%81%E7%9A%84lua%E8%84%9A%E6%9C%AC.jpg"
+	width="741"
+	height="633"
+	srcset="/p/java%E5%85%AB%E8%82%A1/%E8%8E%B7%E5%8F%96%E9%94%81%E7%9A%84lua%E8%84%9A%E6%9C%AC_hu_51ed4c53149a47a0.jpg 480w, /p/java%E5%85%AB%E8%82%A1/%E8%8E%B7%E5%8F%96%E9%94%81%E7%9A%84lua%E8%84%9A%E6%9C%AC_hu_c55a4a65091a07b8.jpg 1024w"
+	loading="lazy"
+	
+		alt="获取锁的lua脚本"
+	
+	
+		class="gallery-image" 
+		data-flex-grow="117"
+		data-flex-basis="280px"
+	
+></p>
+<p>释放锁的lua脚本：</p>
+<p><img src="/p/java%E5%85%AB%E8%82%A1/%E9%87%8A%E6%94%BE%E9%94%81%E7%9A%84lua%E8%84%9A%E6%9C%AC.jpg"
+	width="741"
+	height="574"
+	srcset="/p/java%E5%85%AB%E8%82%A1/%E9%87%8A%E6%94%BE%E9%94%81%E7%9A%84lua%E8%84%9A%E6%9C%AC_hu_8312da9a296b7a4b.jpg 480w, /p/java%E5%85%AB%E8%82%A1/%E9%87%8A%E6%94%BE%E9%94%81%E7%9A%84lua%E8%84%9A%E6%9C%AC_hu_911e7c085e8c2a0d.jpg 1024w"
+	loading="lazy"
+	
+		alt="释放锁的lua脚本"
+	
+	
+		class="gallery-image" 
+		data-flex-grow="129"
+		data-flex-basis="309px"
+	
+></p>
+<p>redisson锁重试和看门狗机制：</p>
+<p><img src="/p/java%E5%85%AB%E8%82%A1/redssion%E9%94%81%E9%87%8D%E8%AF%95%E5%92%8C%E7%9C%8B%E9%97%A8%E7%8B%97%E6%B5%81%E7%A8%8B%E5%9B%BE.jpg"
+	width="1448"
+	height="666"
+	srcset="/p/java%E5%85%AB%E8%82%A1/redssion%E9%94%81%E9%87%8D%E8%AF%95%E5%92%8C%E7%9C%8B%E9%97%A8%E7%8B%97%E6%B5%81%E7%A8%8B%E5%9B%BE_hu_309d3c34b63c5155.jpg 480w, /p/java%E5%85%AB%E8%82%A1/redssion%E9%94%81%E9%87%8D%E8%AF%95%E5%92%8C%E7%9C%8B%E9%97%A8%E7%8B%97%E6%B5%81%E7%A8%8B%E5%9B%BE_hu_bbbc07fd2e504c2a.jpg 1024w"
+	loading="lazy"
+	
+		alt="redssion锁重试和看门狗流程图"
+	
+	
+		class="gallery-image" 
+		data-flex-grow="217"
+		data-flex-basis="521px"
+	
+></p>
+<h3 id="9redis哨兵模式和集群脑裂">9.redis哨兵模式和集群脑裂
+</h3><p>redis提供了哨兵（sentinel）机制来实现主从集群的自动故障恢复。哨兵的结构和作用如下：</p>
+<p><strong>监控</strong>：sentinel会不断检查您的master和slave是否按预期工作</p>
+<p><strong>自动故障恢复</strong>：如果master故障，sentinel会将一个slave提升未master。当故障实例恢复后也以新的master为主</p>
+<p><strong>通知</strong>：sentinel充当redis客服段的服务发现来源，当集群发生故障转移时，会将最新的信息推送给redis的客户端</p>
+<p>哨兵选主规则</p>
+<p>首先判断主从节点断开时间长短，如超过指定值就排该从节点</p>
+<p>然后判断从节点的slave-priority值，越小优先级越高</p>
+<p>如果slave-prority一样，则判断slave节点的offset值，越大优先级越高</p>
+<p>最后是判断slave节点的运行id大小，越小优先级越高</p>
+<p><strong>问：怎么保证redis的高并发可用</strong></p>
+<p>哨兵模式：实现主从集群的自动故障恢复（监控，自动故障恢复，通知）</p>
+<p><strong>你们使用redis是单点还是集群，哪种集群</strong></p>
+<p>主从（一主一从）+哨兵就可以了。单节点不超过10g内存，如果reids内从不足则可以给不同服务分配独立的redis主从节点</p>
+<p><strong>redis集群脑裂，该怎么解决</strong></p>
+<p>集群脑裂是由于主节点和从节点和sentinel处于不同的网络分区，是的sentinel没有能够感知到主节点心跳，所以通过选举的方式提升了一个从节点为主，这样就存在了两个master，就像大脑分裂了一样，这样会导致客户端还在老的节点哪里写入数据，新节点无法同步数据，当网络恢复后，sentinel会将老的主节点降为从节点，这是再从新master同步数据，就会导致数据丢失</p>
+<p><strong>解决</strong>：我们可以修改redis的配置，可以设置最小的从节点数量以及缩短主从数据同步的延迟时间，达不到要求的就拒绝请求，就可以避免大量的数据丢失</p>
+<h3 id="10分片集群数据读写规则">10.分片集群，数据读写规则
+</h3><p><strong>redis的分片集群有什么作用</strong>：</p>
+<p>集群中有多个master，每个master保存不同数据</p>
+<p>每个master都可以用多个slave节点</p>
+<p>master之间互相ping检测彼此健康状态</p>
+<p>客户端请求可以访问集群任意节点，最终都会被转发到正确节点</p>
+<p><strong>redis分片集群中数据是怎么存储和读取的？</strong></p>
+<p>redis分片集群引入了哈希槽的概念，redis集群中有16384个哈希槽</p>
+<p>将16384个插槽分配到不同的实例</p>
+<p>读写数据：根据key的有效部分计算哈希值，对16384取余（有小部分：如果key前面有大括号，大括号中的内容就是有效部分，如果没有，则以key本身作为有效部分）余数作为插槽，寻找插槽所在的实例</p>
+<h3 id="11redis是单线程的但是为什么还那么快">11.Redis是单线程的，但是为什么还那么快
+</h3><p>redis是纯内存操作，执行速度非常快</p>
+<p>采用单线程，避免不需要的上下文切换可竞争条件，多线程还要考虑线程安全问题</p>
+<p>使用I/O多路复用模型，非阻塞IO</p>
+<h2 id="二常见集合篇">二、常见集合篇
+</h2><h3 id="1arrlist-数据结构-数组">1.ArrList-数据结构-数组：
+</h3><p><strong>数组</strong>：是一种用连续的内存空间存储相同数据类型数据的线性数据结构</p>
+<p><strong>寻址公式</strong>：a[i] = baseAddress + i*dataTypeSize</p>
+<p>baseAddress:数组的首地址</p>
+<p>dataTypeSize：代表数组中元素类型的大小，int型的数据，dataTypeSize=4个字节</p>
+<p><strong>为什么数组索引从0开始呢</strong>？</p>
+<p>在根据数组索引获取元素时，会用索引和寻址公式来计算内存所对应的元素数据，寻址公式是：数组的首地址+索引*存储数据的类型大小</p>
+<p>如果数组的索引从1开始，寻址公式中，就需要增加一次减法操作，对于cpu来说就多了一次指令，性能不高</p>
+<p><strong>插入和删除时间复杂度</strong>：</p>
+<p>插入和删除时，为保证数据的内存连续性，需要挪动数组元素，平均时间复杂度为O(n)</p>
+<h3 id="2arraylist底层的实现原理是什么">2.ArrayList底层的实现原理是什么？
+</h3><p>ArrayList底层是动态数组实现的</p>
+<p>ArrayList初始容量为0，当第一次田间数据的时候才会初始化容量为10</p>
+<p>ArrayList在进行扩容的时候是原来容量的1.5倍，每次扩容都需要拷贝数组</p>
+<p>ArrayList在添加数据的时候：</p>
+<p>​	确保数组已使用长度（size）加1之后足够存下下一个数据</p>
+<p>​	计算数组的容量，如果当前数组已使用长度+1后的大于当前数组长度，则调用grow方法扩容（原来的1.5倍）</p>
+<p>​	确保新增的数据有地方存储后，则将新元素添加到位于size的位置上</p>
+<p>​	返回添加成果布尔值</p>
+<h3 id="3如何实现数组和list之间的转换">3.如何实现数组和List之间的转换
+</h3><p>数组转List，使用JDK中java.util.Arrats工具类的asList方法</p>
+<p>List转数组，使用List的toArray方法。无参toArray方法返回Object数组，传入初始化长度的数组对象，返回该数组对象</p>
+<p>Arrays.asList转List后，如果修改了数组内容，list受影响吗</p>
+<p>List用toArray转数组后，如果修改了List内容，数组受影响吗</p>
+<p>答：</p>
+<p>Arrays.asList转换list之后，如果修改了数组内容，list受影响，因为它的底层使用的arrays类中的一个内部类ArrayList来构建的集合，这个集合的构造器中，把我们传入的这个集合进行包装而已，最终都是指向同一个内存地址</p>
+<p>list使用了toArray转数组后，如果修改了list内容，数组不受影响，当调用了toarray之后，在底层是他进行了数组的拷贝，跟原来的元素就没什么关系了，所以即使修改了list之后，数组不受影响</p>
+<h3 id="4arraylist和linkedlist的区别是什么">4.ArrayList和LinkedList的区别是什么？
+</h3><p>1：底层数据结构</p>
+<p>arrayList是动态数组的数据结构实现</p>
+<p>linkedList是双向链表的数据结构实现</p>
+<p>2：操作数据效率</p>
+<p>arrayList按照下标查询的时间复杂度O（1）[内存是连续的，根据寻址公式],Linked</p>
+<p>List不支持下标查询</p>
+<p>查找（未知索引）：ArrayLIst需要遍历，链表也需要遍历，时间复杂度都是O（n）</p>
+<p>新增和删除：</p>
+<p>3.内存空间占用</p>
+<p>arrayList底层是数组，内存连续，节省内存</p>
+<p>LinkedList是双向链表需要存储数据，和两个指针，更占内存</p>
+<p>4.线程安全</p>
+<p>ArrayList和LinkedList都不是线程安全的</p>
+<p>如果需要保证线程安全，有两种方案</p>
+<p>​	在方法内使用，局部变量则是线程安全的</p>
+<p>​	使用线程安全的ArrayList和LinedList</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-fallback" data-lang="fallback"><span class="line"><span class="cl">List&lt;Object&gt; syncArrayList = Collections.synchronizedList(new ArrayList&lt;&gt;();
+</span></span><span class="line"><span class="cl">List&lt;Object&gt; syncLinkedList = Collections.synchronizedList(new LinkedList&lt;&gt;()):
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>​</p>
+<h3 id="5数据结构-散列表">5.数据结构-散列表
+</h3><p>1.什么是散列表？</p>
+<p>散列表（hash table）又名哈希表/Hash表</p>
+<p>根据键（key）直接访问在内存存储位置值（value）的数据结构</p>
+<p>由数组演化而来，利用了数组支持按照小标进行随机访问数据</p>
+<p>2.散列冲突</p>
+<p>散列冲突又称哈希冲突，哈希碰撞</p>
+<p>指多个key映射到同一个数组下标位置</p>
+<p>3.散列冲突-链表发（拉链）</p>
+<p>数组的每个下标位置称之为桶（bucket）或者槽（slot）</p>
+<p>每个桶会对应一条链表</p>
+<p>hash冲突后的元素都会放到相同槽位对应的链表或红黑树中</p>
+<h3 id="6hashmap实现原理">6.HashMap实现原理
+</h3><p>HashMap的数据结构：底层使用hash表数据结构，即数组和链表或红黑树</p>
+<p>1.当我们往HashMap中put元素时，利用key的hashCode重新hash计算出当前对象的元素在数组中的下标</p>
+<p>2.存储时，如果出现hash值相同的key，此时有两种情况。</p>
+<p>​	如果key相同则覆盖原始值、</p>
+<p>​	如果key不同（出现冲突），则将当前的key-value放入链表（链表长度&gt;=8且数组长度&gt;=64转为红黑树）或红黑树中</p>
+<p>3.获取时，直接查找到hash值对应的下标，在进一步判断key是否相同，从而找到对应值</p>
+<h3 id="7hashmap中put方法的具体实现">7.HashMap中put方法的具体实现
+</h3><p><img src="/p/java%E5%85%AB%E8%82%A1/HashMap%E4%B8%ADput%E6%96%B9%E6%B3%95%E7%9A%84%E5%85%B7%E4%BD%93%E5%AE%9E%E7%8E%B0.jpg"
+	width="1588"
+	height="709"
+	srcset="/p/java%E5%85%AB%E8%82%A1/HashMap%E4%B8%ADput%E6%96%B9%E6%B3%95%E7%9A%84%E5%85%B7%E4%BD%93%E5%AE%9E%E7%8E%B0_hu_49d06484a0021191.jpg 480w, /p/java%E5%85%AB%E8%82%A1/HashMap%E4%B8%ADput%E6%96%B9%E6%B3%95%E7%9A%84%E5%85%B7%E4%BD%93%E5%AE%9E%E7%8E%B0_hu_790603d070a83f60.jpg 1024w"
+	loading="lazy"
+	
+		alt="HashMap中put方法的具体实现"
+	
+	
+		class="gallery-image" 
+		data-flex-grow="223"
+		data-flex-basis="537px"
+	
+></p>
+<p>1.判断键值对数组table是否为空或为null，否则执行resize0进行扩容（初始化)
+2.根据键值key计算hash值得到数组索引
+3.判断table[i]==null，条件成立，直接新建节点添加</p>
+<p>4.如果table[i]==null,不成立
+4.1判断table[ij]的首个元素是否和key一样，如果相同直接覆盖value
+4.2判断table[i]是否为treeNode，即table[i]是否是红黑树，如果是红黑树，则直接在树中插入键值对
+4.3遍历table[]，链表的尾部插入数据，然后判断链表长度是否大于8，大于8的话把链表转换为红黑树，在红黑树中执行插入
+操作，遍历过程中若发现key已经存在直接覆盖value
+5.插入成功后，判断实际存在的键值对数量size是否超多了最大容量threshold（数组长度*0.75），如果超过，进行扩容。</p>
+<h3 id="8hashmap中的扩容机制">8.HashMap中的扩容机制：
+</h3><p>1.在添加元素或初始化的时候需要调用resize方法进行扩容，第一次添加数据初始化数组长度为16，以后每次扩容都是达到了扩容阈值（数组长度*0.75）</p>
+<p>2.每次扩容的时候，都是扩容之前容量的2倍</p>
+<p>3.扩容之后，会新创建一个数组，需要把老数组中的数据挪动到新的数组中</p>
+<p>​	没有hash冲突的节点，则直接用e.hash &amp; (newCap - 1)计算新数组的索引位置</p>
+<p>​	如果是红黑树，走红黑树的添加</p>
+<p>​	如果是链表，则可能需要拆分链表，判断(e.hash &amp; oldCap)是否为0，该元素的位置要么停留在原始位置，要么移动到原始位置+增加的数组大小这个位置上</p>
 
 </section>
 
