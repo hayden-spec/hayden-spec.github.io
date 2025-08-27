@@ -56,6 +56,9 @@
 &gt;&lt;/p&gt;
 &lt;p&gt;存储数据：id为1 的数据，通过多个hash函数获取hash值，根据hash计算数组对应位置改为1&lt;/p&gt;
 &lt;p&gt;查询数据：使用相同hash函数获取hash值，判断对应位置是否都为1&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;使用布隆过滤器的两种场景&lt;/strong&gt;：&lt;/p&gt;
+&lt;p&gt;初始使用：注册用户是就想容器中新增数据，就不需要任务向容器中存数据了&lt;/p&gt;
+&lt;p&gt;使用过程中引用：读取数据源将目标数据刷到布隆过滤器&lt;/p&gt;
 &lt;h3 id=&#34;2缓存击穿&#34;&gt;2.缓存击穿
 &lt;/h3&gt;&lt;p&gt;&lt;strong&gt;缓存击穿&lt;/strong&gt;：给某个key设置了过期时间，当key过期的时候，恰好这个时间点对这个key有大量的并发请求过来，这些并发请求可能瞬间把DB压垮&lt;/p&gt;
 &lt;p&gt;&lt;img src=&#34;https://hayden-spec.github.io/p/java%E5%85%AB%E8%82%A1/%E7%BC%93%E5%AD%98%E5%87%BB%E7%A9%BF%E7%A4%BA%E6%84%8F%E5%9B%BE.jpg&#34;
@@ -443,7 +446,7 @@
 &lt;p&gt;&lt;strong&gt;你们使用redis是单点还是集群，哪种集群&lt;/strong&gt;&lt;/p&gt;
 &lt;p&gt;主从（一主一从）+哨兵就可以了。单节点不超过10g内存，如果reids内从不足则可以给不同服务分配独立的redis主从节点&lt;/p&gt;
 &lt;p&gt;&lt;strong&gt;redis集群脑裂，该怎么解决&lt;/strong&gt;&lt;/p&gt;
-&lt;p&gt;集群脑裂是由于主节点和从节点和sentinel处于不同的网络分区，是的sentinel没有能够感知到主节点心跳，所以通过选举的方式提升了一个从节点为主，这样就存在了两个master，就像大脑分裂了一样，这样会导致客户端还在老的节点哪里写入数据，新节点无法同步数据，当网络恢复后，sentinel会将老的主节点降为从节点，这是再从新master同步数据，就会导致数据丢失&lt;/p&gt;
+&lt;p&gt;集群脑裂是由于主节点和从节点和sentinel处于不同的网络分区，导致sentinel没有能够感知到主节点心跳，所以通过选举的方式提升了一个从节点为主，这样就存在了两个master，就像大脑分裂了一样，这样会导致客户端还在老的节点哪里写入数据，新节点无法同步数据，当网络恢复后，sentinel会将老的主节点降为从节点，这是再从新master同步数据，就会导致数据丢失&lt;/p&gt;
 &lt;p&gt;&lt;strong&gt;解决&lt;/strong&gt;：我们可以修改redis的配置，可以设置最小的从节点数量以及缩短主从数据同步的延迟时间，达不到要求的就拒绝请求，就可以避免大量的数据丢失&lt;/p&gt;
 &lt;h3 id=&#34;10分片集群数据读写规则&#34;&gt;10.分片集群，数据读写规则
 &lt;/h3&gt;&lt;p&gt;&lt;strong&gt;redis的分片集群有什么作用&lt;/strong&gt;：&lt;/p&gt;
@@ -471,10 +474,10 @@
 &lt;p&gt;&lt;strong&gt;插入和删除时间复杂度&lt;/strong&gt;：&lt;/p&gt;
 &lt;p&gt;插入和删除时，为保证数据的内存连续性，需要挪动数组元素，平均时间复杂度为O(n)&lt;/p&gt;
 &lt;h3 id=&#34;2arraylist底层的实现原理是什么&#34;&gt;2.ArrayList底层的实现原理是什么？
-&lt;/h3&gt;&lt;p&gt;ArrayList底层是动态数组实现的&lt;/p&gt;
-&lt;p&gt;ArrayList初始容量为0，当第一次田间数据的时候才会初始化容量为10&lt;/p&gt;
-&lt;p&gt;ArrayList在进行扩容的时候是原来容量的1.5倍，每次扩容都需要拷贝数组&lt;/p&gt;
-&lt;p&gt;ArrayList在添加数据的时候：&lt;/p&gt;
+&lt;/h3&gt;&lt;p&gt;1.ArrayList底层是动态数组实现的&lt;/p&gt;
+&lt;p&gt;2.ArrayList初始容量为0，当第一次添加数据的时候才会初始化容量为10&lt;/p&gt;
+&lt;p&gt;3.ArrayList在进行扩容的时候是原来容量的1.5倍，每次扩容都需要拷贝数组&lt;/p&gt;
+&lt;p&gt;4.ArrayList在添加数据的时候：&lt;/p&gt;
 &lt;p&gt;​	确保数组已使用长度（size）加1之后足够存下下一个数据&lt;/p&gt;
 &lt;p&gt;​	计算数组的容量，如果当前数组已使用长度+1后的大于当前数组长度，则调用grow方法扩容（原来的1.5倍）&lt;/p&gt;
 &lt;p&gt;​	确保新增的数据有地方存储后，则将新元素添加到位于size的位置上&lt;/p&gt;
@@ -565,6 +568,152 @@
 &lt;p&gt;​	没有hash冲突的节点，则直接用e.hash &amp;amp; (newCap - 1)计算新数组的索引位置&lt;/p&gt;
 &lt;p&gt;​	如果是红黑树，走红黑树的添加&lt;/p&gt;
 &lt;p&gt;​	如果是链表，则可能需要拆分链表，判断(e.hash &amp;amp; oldCap)是否为0，该元素的位置要么停留在原始位置，要么移动到原始位置+增加的数组大小这个位置上&lt;/p&gt;
+&lt;h3 id=&#34;9-hashmap的寻址算法&#34;&gt;9 .hashMap的寻址算法
+&lt;/h3&gt;&lt;p&gt;1.计算对象的hashCode()&lt;/p&gt;
+&lt;p&gt;2.在调用hash()方法进行二次哈希，hashCode值右移16位再异或运算，让哈希分布更为均匀&lt;/p&gt;
+&lt;p&gt;3.最后（capacity-1）&amp;amp;hash得到索引&lt;/p&gt;
+&lt;h3 id=&#34;10为何hashmap的数组长度一定是2的次幂&#34;&gt;10.为何HashMap的数组长度一定是2的次幂
+&lt;/h3&gt;&lt;p&gt;1.计算索引时效率更高：如果是2的n次幂可以使用位与运算代替取模&lt;/p&gt;
+&lt;p&gt;2.扩容时重新计算索引效率更高：hash&amp;amp;oldCap==0的元素留在原来位置，否则新位置=旧位置+oldCap&lt;/p&gt;
+&lt;h3 id=&#34;11jdk17中hashmap死循环问题&#34;&gt;11.jdk1.7中hashmap死循环问题
+&lt;/h3&gt;&lt;p&gt;A: 再jdk1.7中的hashmap中再数组进行扩容的时候，因为链表时头插法，再进行数据迁移的过程中，有可能导致死循环&lt;/p&gt;
+&lt;p&gt;比如说：现在有两个线程&lt;/p&gt;
+&lt;p&gt;线程一：读取到了当前的hashmap数据，数据中一个链表再准备扩容时，线程二介入&lt;/p&gt;
+&lt;p&gt;线程二：也读取hashmap，直接进行扩容。因为是头插法，链表的顺序会进行颠倒过来。比如原来的顺序是AB，扩容后的顺序是BA，线程二执行结束。&lt;/p&gt;
+&lt;p&gt;线程一：继续执行的时候就会出现死循环问题。&lt;/p&gt;
+&lt;p&gt;线程一先将A移入新的链表，再将B插入到链头，由于另一个线程的原因，B的next指向了A，所以B-&amp;gt;A-&amp;gt;B，形成循环。&lt;/p&gt;
+&lt;p&gt;当然，JDK8将扩容算法做了调整，不在将元素加入链表头（而是保持与扩容前一样的顺序），尾插法，就避免了jdk7中死循环问题&lt;/p&gt;
+&lt;h2 id=&#34;二并发编程篇&#34;&gt;二.并发编程篇
+&lt;/h2&gt;&lt;h3 id=&#34;1创建线程的方式有哪些&#34;&gt;1.创建线程的方式有哪些？
+&lt;/h3&gt;&lt;p&gt;1.继承Thread类&lt;/p&gt;
+&lt;p&gt;2.实现runnable接口&lt;/p&gt;
+&lt;p&gt;3.实现callable接口&lt;/p&gt;
+&lt;p&gt;4.线程池创建线程&lt;/p&gt;
+&lt;h4 id=&#34;runnable和callable有什么区别&#34;&gt;runnable和callable有什么区别
+&lt;/h4&gt;&lt;p&gt;1.runnable接口run方法没有返回值&lt;/p&gt;
+&lt;p&gt;2.Callable接口call方法有返回值，是个泛型，和Future，FutureTask配合可以用来获取异步执行结果&lt;/p&gt;
+&lt;p&gt;3.Callable接口的call()方法允许抛出异常，而Runnable接口的run方法的异常只能在内部消化，不能继续上抛&lt;/p&gt;
+&lt;h4 id=&#34;run和start有什么区别&#34;&gt;run()和start()有什么区别？
+&lt;/h4&gt;&lt;p&gt;1.start():用来启动线程，通过该线程调用run方法执行run方法中所定义的逻辑代码。start方法只能被调用一次&lt;/p&gt;
+&lt;p&gt;2.run()：封装了要被线程执行的代码可以被调用多次&lt;/p&gt;
+&lt;h3 id=&#34;2线程包括哪些状态&#34;&gt;2.线程包括哪些状态
+&lt;/h3&gt;&lt;p&gt;新建（NEW），可运行（RUNNABLE），阻塞（BLOCKED），等待（WAITING），时间等待（TIMED_WALTING)，终止（TERMINATED）&lt;/p&gt;
+&lt;h3 id=&#34;3线程状态之间是如何变换的&#34;&gt;3.线程状态之间是如何变换的
+&lt;/h3&gt;&lt;p&gt;&lt;img src=&#34;https://hayden-spec.github.io/p/java%E5%85%AB%E8%82%A1/%E7%BA%BF%E7%A8%8B%E4%B9%8B%E9%97%B4%E7%8A%B6%E6%80%81%E5%88%87%E6%8D%A2.jpg&#34;
+	width=&#34;1494&#34;
+	height=&#34;751&#34;
+	srcset=&#34;https://hayden-spec.github.io/p/java%E5%85%AB%E8%82%A1/%E7%BA%BF%E7%A8%8B%E4%B9%8B%E9%97%B4%E7%8A%B6%E6%80%81%E5%88%87%E6%8D%A2_hu_66bbdfad5cc231c4.jpg 480w, https://hayden-spec.github.io/p/java%E5%85%AB%E8%82%A1/%E7%BA%BF%E7%A8%8B%E4%B9%8B%E9%97%B4%E7%8A%B6%E6%80%81%E5%88%87%E6%8D%A2_hu_4bc34e1a776e592d.jpg 1024w&#34;
+	loading=&#34;lazy&#34;
+	
+		alt=&#34;线程之间状态切换&#34;
+	
+	
+		class=&#34;gallery-image&#34; 
+		data-flex-grow=&#34;198&#34;
+		data-flex-basis=&#34;477px&#34;
+	
+&gt;&lt;/p&gt;
+&lt;h3 id=&#34;4在java中wait和sleep方法的不同&#34;&gt;4.在java中wait和sleep方法的不同
+&lt;/h3&gt;&lt;p&gt;共同点：wait(),wait(long)和sleep(long)的效果都是让当前线程暂时放弃CPU的使用权，进入阻塞状态&lt;/p&gt;
+&lt;p&gt;不同点：&lt;/p&gt;
+&lt;p&gt;1.方法归属不同&lt;/p&gt;
+&lt;p&gt;​	sleep(long)是Thread的静态方法&lt;/p&gt;
+&lt;p&gt;​	而wait(),wait(long)都是Object的成员方法，每个对象都有&lt;/p&gt;
+&lt;p&gt;2.醒来时机不同&lt;/p&gt;
+&lt;p&gt;​	执行sleep(long)和wait(long)的线程都会在等待相应毫秒后醒来&lt;/p&gt;
+&lt;p&gt;​	wait(long)和wait()还可以被notify唤醒，wait()如果不唤醒就一直等下去&lt;/p&gt;
+&lt;p&gt;​	他们都可以被打断唤醒&lt;/p&gt;
+&lt;p&gt;3.锁特性不同&lt;/p&gt;
+&lt;p&gt;​	wait方法的调用必须先获取wait对象的锁，而sleep则无此限制&lt;/p&gt;
+&lt;p&gt;​	wait方法执行后会释放对象锁，允许其他对象获得该对象锁（我放弃cpu，但你们还可以用）&lt;/p&gt;
+&lt;p&gt;​	而sleep如果在synchronized代码块中执行，并不会释放对象锁（我放弃cpu，你们也用不了）&lt;/p&gt;
+&lt;h3 id=&#34;5如何停止一个正在运行的线程&#34;&gt;5.如何停止一个正在运行的线程？
+&lt;/h3&gt;&lt;p&gt;有三种方式可以停止线程&lt;/p&gt;
+&lt;p&gt;1.使用退出标志，使线程正常退出，也就是当run方法完成后线程终止&lt;/p&gt;
+&lt;p&gt;2.使用stop方法强行终止（不推荐，方法已作废）&lt;/p&gt;
+&lt;p&gt;3.使用interrupt方法中断线程&lt;/p&gt;
+&lt;p&gt;​	1.打断阻塞的线程（slepp，wait，join）的线程，线程会抛出InterruptedException异常&lt;/p&gt;
+&lt;p&gt;​	2.打断正常的线程，可以根据打断状态来标记是否退出线程。&lt;/p&gt;
+&lt;h3 id=&#34;6synchrinized关键字的底层原理&#34;&gt;6.synchrinized关键字的底层原理
+&lt;/h3&gt;&lt;p&gt;1.synchronized[对象锁]采用互斥的方法让同一时刻至多只有一个线程能持有[对象锁]&lt;/p&gt;
+&lt;p&gt;2.他的底层由monitor实现的，monitor是jvm级别的对象（C++实现）&lt;/p&gt;
+&lt;p&gt;3.在monitor内部有三个属性，分别是owner，entrylist，，waitset&lt;/p&gt;
+&lt;p&gt;4.其中owner是关联的获得锁的线程，并且只能关联一个线程；entrylist关联的是处于阻塞状态的线程；waitset关联的是处于waiting状态的线程&lt;/p&gt;
+&lt;h3 id=&#34;7monitor实现的锁属于重量级锁你了解过锁升级么&#34;&gt;7.Monitor实现的锁属于重量级锁，你了解过锁升级么？
+&lt;/h3&gt;&lt;p&gt;&lt;img src=&#34;https://hayden-spec.github.io/p/java%E5%85%AB%E8%82%A1/%E9%94%81%E5%8D%87%E7%BA%A7.jpg&#34;
+	width=&#34;1565&#34;
+	height=&#34;585&#34;
+	srcset=&#34;https://hayden-spec.github.io/p/java%E5%85%AB%E8%82%A1/%E9%94%81%E5%8D%87%E7%BA%A7_hu_f1b2ed898f93386b.jpg 480w, https://hayden-spec.github.io/p/java%E5%85%AB%E8%82%A1/%E9%94%81%E5%8D%87%E7%BA%A7_hu_2d5186d75db46706.jpg 1024w&#34;
+	loading=&#34;lazy&#34;
+	
+		alt=&#34;锁升级&#34;
+	
+	
+		class=&#34;gallery-image&#34; 
+		data-flex-grow=&#34;267&#34;
+		data-flex-basis=&#34;642px&#34;
+	
+&gt;&lt;/p&gt;
+&lt;h3 id=&#34;8谈谈jmmjava内存模型&#34;&gt;8.谈谈JMM（java内存模型）
+&lt;/h3&gt;&lt;p&gt;1.JMM java内存模型，定义了共享内存中多线程程序读写操作的行为规范，通过这些规则来规范对内存的读写操作从而确保指令的正确性&lt;/p&gt;
+&lt;p&gt;2.JMM把内存分位两块，一块是私有线程的工作区域（工作内存），一块是所有线程的共享区域（主内存）&lt;/p&gt;
+&lt;p&gt;3.线程跟线程之间是相互隔离，线程跟线程交互需要通过主内存&lt;/p&gt;
+&lt;h2 id=&#34;三数据库篇&#34;&gt;三数据库篇
+&lt;/h2&gt;&lt;h3 id=&#34;1mysql中如何定位慢查询&#34;&gt;1.Mysql中如何定位慢查询
+&lt;/h3&gt;&lt;p&gt;​	当我们做压测时候有的接口非常的慢，接口相应时间超过了2s以上，因为我们当时的系统部署了运维的监控系统Skywalking，在展示的报表中可以看到是哪个接口比较慢，并且可以分析这个接口哪个部分比较慢，这里可以看到sql的具体执行时间&lt;/p&gt;
+&lt;p&gt;​	在mysql中也提供了慢日志查询的功能，可以在mysql的系统配置文件中开启这个慢日志的功能，并且也可以设置sql执行超过多少时间来记录到日志文件中，我们就可以在日志文件找到比较慢的sql&lt;/p&gt;
+&lt;h3 id=&#34;2sql语句执行很慢如何分析&#34;&gt;2.sql语句执行很慢，如何分析？
+&lt;/h3&gt;&lt;p&gt;​	如果一条sql执行很慢，我们通常会使用mysql自动的执行计划explain来去查看这条sql的执行情况，比如在这里米娜可以通过key和key_len检查是否命中索引，如果本身已经添加了索引，也可以判断索引是否有失效的情况，第二个，可以通过type字段查看sql是否有进一步的优化空间，是否存在全索引扫描或全盘扫描，第三个可以通过extra建议来判断，是否出现了回表的情况，如果有，可以尝试添加索引或者修改返回字段来修复&lt;/p&gt;
+&lt;h3 id=&#34;3什么是索引&#34;&gt;3.什么是索引？
+&lt;/h3&gt;&lt;p&gt;​	他是帮助mysql高效获取数据的数据结构，主要是用来提高数据检索的效率，降低数据库的io成本，通过索引列对数据进行排序，降低数据排序的成本，也降低了cpu的消耗&lt;/p&gt;
+&lt;h3 id=&#34;4索引底层数据结构了解么&#34;&gt;4.索引底层数据结构了解么？
+&lt;/h3&gt;&lt;p&gt;​	mysql的默认存储引擎innoDB采用的B+树的数据结构来存储索引，选择B+树的主要原因是：第一阶树更多，路径更短，第二个磁盘读写代价B+树更低，非叶子节点只存储指针，叶子节点存储数据，第三B+树便于扫库和区间查询，叶子节点是一个双向链表&lt;/p&gt;
+&lt;h3 id=&#34;5b树和b树区别是什么&#34;&gt;5.B树和B+树区别是什么
+&lt;/h3&gt;&lt;p&gt;第一：在B树中，非叶子节点和叶子节点都会存放数据，而B+树的所有数据都存储在叶子节点，在查询时，B+树查找效率更加稳定&lt;/p&gt;
+&lt;p&gt;第二：在进行返回查询时，B+树效率更高，因为B+树都存在叶子节点存储，并且叶子节点是一个双向链表&lt;/p&gt;
+&lt;h3 id=&#34;6什么是聚簇索引什么是非聚簇索引&#34;&gt;6.什么是聚簇索引什么是非聚簇索引
+&lt;/h3&gt;&lt;p&gt;聚簇索引主要是指数据与索引放在一块，B+树的叶子节点保存了整行的数据，有且只有一个，一般情况下主键作为聚簇索引&lt;/p&gt;
+&lt;p&gt;非聚簇索引指的是数据与索引分开存储，B+树的叶子节点保存对应的主键。可以有多个，一般我们自己定义的索引都是非聚簇索引&lt;/p&gt;
+&lt;h3 id=&#34;7什么是回表查询&#34;&gt;7.什么是回表查询
+&lt;/h3&gt;&lt;p&gt;回表的意思是通过二级索引找到对应的主键值，然后再通过主键值找到聚簇索引中所对应的整行数据，这个过程就是回表&lt;/p&gt;
+&lt;h3 id=&#34;8什么是覆盖索引&#34;&gt;8.什么是覆盖索引
+&lt;/h3&gt;&lt;p&gt;​	覆盖索引是指select查询语句使用了索引，再返回的列，必须在索引中全部能够找到，如果我们使用id查询，它会直接走聚簇索引查询，一次索引扫描，直接返回数据性能高&lt;/p&gt;
+&lt;p&gt;​	如果按照二级索引查询数据的时候，返回的列中没有创建索引，有可能会触发回表查询，尽量避免使用select*，尽量在返回的列中都包含添加索引的字段&lt;/p&gt;
+&lt;h3 id=&#34;9mysql超大分页怎么处理&#34;&gt;9.MySQL超大分页怎么处理
+&lt;/h3&gt;&lt;p&gt;超大分页一般都是在数据量比较大时，我们使用了limit分页查询，并且需要对数据进行排序，这个时候效率就很低，我们可以采用覆盖索引和子查询来解决&lt;/p&gt;
+&lt;p&gt;先分页查询数据的id字段，确定id之后，再用子查询来过滤，只查询这个id列表中的数据就可以了，因为查询id的时候，走的是覆盖索引，所以效率可以提升很多&lt;/p&gt;
+&lt;h3 id=&#34;10创建索引的原则&#34;&gt;10.创建索引的原则？
+&lt;/h3&gt;&lt;p&gt;表中的数据要超过10w以上，我们才会创建索引，并且添加索引的字段是查询比较繁琐的字段，也就是像作为查询条件，排序字段或分组的字段这些&lt;/p&gt;
+&lt;p&gt;通常创建索引的时候都是使用复合索引来创建，一条sql的返回值，尽量使用覆盖索引，入字段的区分度不高，我们也会把它放在组合索引后面的字段&lt;/p&gt;
+&lt;p&gt;如果一个字段的内容较长，我们会考虑使用前缀索引来使用，当然并不是所有字段都需要添加索引，这个索引的数量也要控制，因为添加索引也会导致新增改的速度变慢&lt;/p&gt;
+&lt;h3 id=&#34;11什么情况下索引会失效&#34;&gt;11.什么情况下索引会失效
+&lt;/h3&gt;&lt;p&gt;违反最左前缀法则&lt;/p&gt;
+&lt;p&gt;范围查询右边的列，不能使用索引&lt;/p&gt;
+&lt;p&gt;不要在索引列上进行运算操作，索引将失效&lt;/p&gt;
+&lt;p&gt;字符串不加单引号，造成索引失效（类型转换）&lt;/p&gt;
+&lt;p&gt;以%开头的Like模糊查询，索引失效&lt;/p&gt;
+&lt;h3 id=&#34;12sql优化经验&#34;&gt;12.sql优化经验
+&lt;/h3&gt;&lt;p&gt;A:这几个方面考虑，比如建表的时候，使用索引，sql语句的编写，主从复制，读写分离，还有一个是如果量比较大的话，可以考虑分库分表&lt;/p&gt;
+&lt;p&gt;Q:创建表的时候，如何优化&lt;/p&gt;
+&lt;p&gt;A:这个主要参考阿里出的哪个开发手册《松山版》，比如，在定义字段的时候需要结合字段的内容来选择合适的类型，如果是数值的话，像tinyint，int，bigint这些类型，要根据实际情况选择，如果是字符串类型也是结合存储的内容来选择char和varchar或者text类型&lt;/p&gt;
+&lt;p&gt;Q：在使用索引时如何优化？&lt;/p&gt;
+&lt;p&gt;Q:对sql语句有哪些优化&lt;/p&gt;
+&lt;p&gt;A:select语句务必声明字段名称，不要直接使用select *，还有就是要注意sql语句避免造成索引失效的写法；如果是聚合查询，尽量用union all代替union，union会多一次过滤，效率比较低；如果是表关联的话，尽量使用innerjoin，不要使用left join right join，如必须使用 一定要以小表驱动大表&lt;/p&gt;
+&lt;h3 id=&#34;13事务的特性是什么&#34;&gt;13.事务的特性是什么？
+&lt;/h3&gt;&lt;p&gt;ACID，分别是指：原子性，一致性，隔离性，持久性：举个例子：A向B转账500，转账成功，A扣除500，B增加500，原子操作体现在要么都成功，要么都失败&lt;/p&gt;
+&lt;p&gt;在转账过程中，数据要一致，A扣除了500，B必须增加500&lt;/p&gt;
+&lt;p&gt;在转账过程中，隔离性体现在A向B转账，不能受其他事务干扰&lt;/p&gt;
+&lt;p&gt;在转账过程中，持久性体现在事务提交后，要把数据持久化&lt;/p&gt;
+&lt;h3 id=&#34;14并发事务带来哪些问题&#34;&gt;14.并发事务带来哪些问题？
+&lt;/h3&gt;&lt;p&gt;第一脏读，当一个事务正在访问数据并对数据进行了修改，而这种修改还没有提交到数据库中，这是另一个事务也访问了这个数据，因为这个数据是还没有提交的数据，那么另一个事务读到的就是脏数据&lt;/p&gt;
+&lt;p&gt;第二是不可重复读：比如在一个事务中多次读同一数据。在这个数据还没影结束时，另一个事务也访问该数据，那么，在第一个事务中的两次读数据之间，由于第二个事务的修改导致第一个事务两次读取的数据可能不一样，这就发生了在一个事务中两次读到的数据都是不一样的情况&lt;/p&gt;
+&lt;p&gt;第三就是幻读：幻读与不可重复读，它发生在一个事务（T1）读取了几行数据，接着另一个并发事务（T2）插入了一些数据时，在随后的查询中，第一个书屋（T1）就会发现多了一些根本不存在的记录，就好像发生了幻觉一样。&lt;/p&gt;
+&lt;p&gt;Q：怎么解决这些问题？mysql的默认隔离级别是？&lt;/p&gt;
+&lt;p&gt;A:msql支持四种隔离级别，分别有：&lt;/p&gt;
+&lt;p&gt;第一个是，未提交读(read uncommitted)它解决不了刚才提出的所有问题，一般项目中也不用这个，第二个是读已提交(read committed)他能解决脏读的问题，但是解决不赖哦可重复度和幻读。第三个是可重复读(repeatable read)他能解决脏读和不可重复读。但是解决不了幻读，这个也是msql的默认隔离级别。第四个是串行化(serializable)它可以解决刚才提出来的所有问题，但是由于让事务串行执行的，性能比较低，所有我们一般使用的是msql默认的隔离级别：可重复读&lt;/p&gt;
+&lt;h3 id=&#34;15undo-log和read-log区别&#34;&gt;15.undo log和read log区别
+&lt;/h3&gt;&lt;p&gt;redo log日志记录的是数据页的物理变化，服务宕机可用来同步数据，而undo log不同，它主要记录的是逻辑日志，当事务回滚时，通过逆操作恢复原来的数据，比如我们删除一条数据的时候，会会在undo log日志文件中新增一条delete语句，如果发生回滚就执行逆操作；&lt;/p&gt;
+&lt;p&gt;redo log保证了事务的持久性，而undo log保证了事务的原子性和一致性&lt;/p&gt;
 </description>
         </item>
         <item>
@@ -992,6 +1141,315 @@ $$</description>
 &lt;pre tabindex=&#34;0&#34; class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-html&#34; data-lang=&#34;html&#34;&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;.emoji {
 &lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;  font-family: Apple Color Emoji, Segoe UI Emoji, NotoColorEmoji, Segoe UI Symbol, Android Emoji, EmojiSymbols;
 &lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;}&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;
+&lt;/div&gt;
+&lt;/div&gt;</description>
+        </item>
+        <item>
+        <title></title>
+        <link>https://hayden-spec.github.io/p/</link>
+        <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+        
+        <guid>https://hayden-spec.github.io/p/</guid>
+        <description>&lt;h2 id=&#34;用户管理&#34;&gt;用户管理
+&lt;/h2&gt;&lt;h3 id=&#34;一如何封装返回结果&#34;&gt;一.如何封装返回结果
+&lt;/h3&gt;&lt;h4 id=&#34;results工具类&#34;&gt;Results工具类：
+&lt;/h4&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;div class=&#34;chroma&#34;&gt;
+&lt;table class=&#34;lntable&#34;&gt;&lt;tr&gt;&lt;td class=&#34;lntd&#34;&gt;
+&lt;pre tabindex=&#34;0&#34; class=&#34;chroma&#34;&gt;&lt;code&gt;&lt;span class=&#34;lnt&#34;&gt; 1
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt; 2
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt; 3
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt; 4
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt; 5
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt; 6
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt; 7
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt; 8
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt; 9
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;10
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;11
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;12
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;13
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;14
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;15
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;16
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;17
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;18
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;19
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;20
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;21
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;22
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;23
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;24
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;25
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;26
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;27
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;28
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;29
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;30
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;31
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;32
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;33
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;34
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;35
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;36
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;37
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;38
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;39
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;40
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;41
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;42
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;43
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;44
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;45
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;46
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;47
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;48
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;49
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;50
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;
+&lt;td class=&#34;lntd&#34;&gt;
+&lt;pre tabindex=&#34;0&#34; class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-fallback&#34; data-lang=&#34;fallback&#34;&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;public final class Results {
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;    /**
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;     * 构造成功响应
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;     */
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;    public static Result&amp;lt;Void&amp;gt; success() {
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;        return new Result&amp;lt;Void&amp;gt;()
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;                .setCode(Result.SUCCESS_CODE);
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;    }
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;    /**
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;     * 构造带返回数据的成功响应
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;     */
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;    public static &amp;lt;T&amp;gt; Result&amp;lt;T&amp;gt; success(T data) {
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;        return new Result&amp;lt;T&amp;gt;()
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;                .setCode(Result.SUCCESS_CODE)
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;                .setData(data);
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;    }
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;    /**
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;     * 构建服务端失败响应
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;     */
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;    public static Result&amp;lt;Void&amp;gt; failure() {
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;        return new Result&amp;lt;Void&amp;gt;()
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;                .setCode(BaseErrorCode.SERVICE_ERROR.code())
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;                .setMessage(BaseErrorCode.SERVICE_ERROR.message());
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;    }
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;    /**
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;     * 通过 {@link AbstractException} 构建失败响应
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;     */
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;    public static Result&amp;lt;Void&amp;gt; failure(AbstractException abstractException) {
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;        String errorCode = Optional.ofNullable(abstractException.getErrorCode())
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;                .orElse(BaseErrorCode.SERVICE_ERROR.code());
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;        String errorMessage = Optional.ofNullable(abstractException.getErrorMessage())
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;                .orElse(BaseErrorCode.SERVICE_ERROR.message());
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;        return new Result&amp;lt;Void&amp;gt;()
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;                .setCode(errorCode)
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;                .setMessage(errorMessage);
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;    }
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;    /**
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;     * 通过 errorCode、errorMessage 构建失败响应
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;     */
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;    public static Result&amp;lt;Void&amp;gt; failure(String errorCode, String errorMessage) {
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;        return new Result&amp;lt;Void&amp;gt;()
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;                .setCode(errorCode)
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;                .setMessage(errorMessage);
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;    }
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;}
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;
+&lt;/div&gt;
+&lt;/div&gt;&lt;h4 id=&#34;result类&#34;&gt;Result类：
+&lt;/h4&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;div class=&#34;chroma&#34;&gt;
+&lt;table class=&#34;lntable&#34;&gt;&lt;tr&gt;&lt;td class=&#34;lntd&#34;&gt;
+&lt;pre tabindex=&#34;0&#34; class=&#34;chroma&#34;&gt;&lt;code&gt;&lt;span class=&#34;lnt&#34;&gt; 1
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt; 2
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt; 3
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt; 4
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt; 5
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt; 6
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt; 7
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt; 8
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt; 9
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;10
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;11
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;12
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;13
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;14
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;15
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;16
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;17
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;18
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;19
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;20
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;21
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;22
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;23
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;24
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;25
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;26
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;27
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;28
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;29
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;30
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;31
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;32
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;33
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;34
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;35
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;36
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;
+&lt;td class=&#34;lntd&#34;&gt;
+&lt;pre tabindex=&#34;0&#34; class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-fallback&#34; data-lang=&#34;fallback&#34;&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;@Data
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;@Accessors(chain = true)
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;public class Result&amp;lt;T&amp;gt; implements Serializable {
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;    @Serial
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;    private static final long serialVersionUID = 5679018624309023727L;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;    /**
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;     * 正确返回码
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;     */
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;    public static final String SUCCESS_CODE = &amp;#34;0&amp;#34;;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;    /**
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;     * 返回码
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;     */
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;    private String code;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;    /**
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;     * 返回消息
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;     */
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;    private String message;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;    /**
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;     * 响应数据
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;     */
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;    private T data;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;    /**
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;     * 请求ID
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;     */
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;    private String requestId;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;    public boolean isSuccess() {
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;        return SUCCESS_CODE.equals(code);
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;    }
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;}
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;
+&lt;/div&gt;
+&lt;/div&gt;&lt;h4 id=&#34;全局异常处理器&#34;&gt;全局异常处理器
+&lt;/h4&gt;&lt;div class=&#34;highlight&#34;&gt;&lt;div class=&#34;chroma&#34;&gt;
+&lt;table class=&#34;lntable&#34;&gt;&lt;tr&gt;&lt;td class=&#34;lntd&#34;&gt;
+&lt;pre tabindex=&#34;0&#34; class=&#34;chroma&#34;&gt;&lt;code&gt;&lt;span class=&#34;lnt&#34;&gt; 1
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt; 2
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt; 3
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt; 4
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt; 5
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt; 6
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt; 7
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt; 8
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt; 9
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;10
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;11
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;12
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;13
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;14
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;15
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;16
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;17
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;18
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;19
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;20
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;21
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;22
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;23
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;24
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;25
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;26
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;27
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;28
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;29
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;30
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;31
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;32
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;33
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;34
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;35
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;36
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;37
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;38
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;39
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;40
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;41
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;42
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;43
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;44
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;45
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;46
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;47
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;48
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;49
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;50
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;51
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;52
+&lt;/span&gt;&lt;span class=&#34;lnt&#34;&gt;53
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;
+&lt;td class=&#34;lntd&#34;&gt;
+&lt;pre tabindex=&#34;0&#34; class=&#34;chroma&#34;&gt;&lt;code class=&#34;language-fallback&#34; data-lang=&#34;fallback&#34;&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;/**
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt; * 全局异常处理器
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt; *
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt; */
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;@Component
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;@Slf4j
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;@RestControllerAdvice
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;public class GlobalExceptionHandler {
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;    /**
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;     * 拦截参数验证异常
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;     */
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;    @SneakyThrows
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;    @ExceptionHandler(value = MethodArgumentNotValidException.class)
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;    public Result validExceptionHandler(HttpServletRequest request, MethodArgumentNotValidException ex) {
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;        BindingResult bindingResult = ex.getBindingResult();
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;        FieldError firstFieldError = CollectionUtil.getFirst(bindingResult.getFieldErrors());
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;        String exceptionStr = Optional.ofNullable(firstFieldError)
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;                .map(FieldError::getDefaultMessage)
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;                .orElse(StrUtil.EMPTY);
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;        log.error(&amp;#34;[{}] {} [ex] {}&amp;#34;, request.getMethod(), getUrl(request), exceptionStr);
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;        return Results.failure(BaseErrorCode.CLIENT_ERROR.code(), exceptionStr);
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;    }
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;    /**
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;     * 拦截应用内抛出的异常
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;     */
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;    @ExceptionHandler(value = {AbstractException.class})
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;    public Result abstractException(HttpServletRequest request, AbstractException ex) {
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;        if (ex.getCause() != null) {
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;            log.error(&amp;#34;[{}] {} [ex] {}&amp;#34;, request.getMethod(), request.getRequestURL().toString(), ex.toString(), ex.getCause());
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;            return Results.failure(ex);
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;        }
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;        log.error(&amp;#34;[{}] {} [ex] {}&amp;#34;, request.getMethod(), request.getRequestURL().toString(), ex.toString());
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;        return Results.failure(ex);
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;    }
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;    /**
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;     * 拦截未捕获异常
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;     */
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;    @ExceptionHandler(value = Throwable.class)
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;    public Result defaultErrorHandler(HttpServletRequest request, Throwable throwable) {
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;        log.error(&amp;#34;[{}] {} &amp;#34;, request.getMethod(), getUrl(request), throwable);
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;        return Results.failure();
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;    }
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;    private String getUrl(HttpServletRequest request) {
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;        if (StringUtils.isEmpty(request.getQueryString())) {
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;            return request.getRequestURL().toString();
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;        }
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;        return request.getRequestURL().toString() + &amp;#34;?&amp;#34; + request.getQueryString();
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;    }
+&lt;/span&gt;&lt;/span&gt;&lt;span class=&#34;line&#34;&gt;&lt;span class=&#34;cl&#34;&gt;}
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;
 &lt;/div&gt;
 &lt;/div&gt;</description>
         </item>
